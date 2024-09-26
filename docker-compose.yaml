@@ -1,0 +1,39 @@
+services:
+  memcached_socket:
+    image: memcached:1.6.31-alpine
+    # Allocate up to 250 MB of RAM and run using a UNIX socket (faster).
+    command: [ "memcached", "-m", "250", "--unix-socket", "/tmp/memcached.sock", "--unix-mask", "766" ]
+    volumes:
+      - memcached-socket:/tmp
+  memcached_network:
+    image: memcached:1.6.31-alpine
+    # Allocate up to 250 MB of RAM and run using network.
+    command: [ "memcached", "-m", "250" ]
+    expose:
+      - 11211
+  redis:
+    build:
+      dockerfile: Dockerfile-redis
+    image: redis-for-benchmark
+    volumes:
+      - redis-socket:/var/run/redis
+    expose:
+      - 6379
+  django:
+    build:
+      context: .
+    image: cache-benchmark
+    volumes:
+      - memcached-socket:/var/run/memcached
+      - redis-socket:/var/run/redis
+    ports:
+      - "8000:8000"
+    depends_on:
+      - memcached_socket
+      - memcached_network
+      - redis
+
+
+volumes:
+  memcached-socket:
+  redis-socket:
